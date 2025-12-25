@@ -37,3 +37,17 @@ export interface AnalysisSummary {
   topTopics: { name: string; value: number }[];
   sentimentBreakdown: { name: string; value: number }[];
 }
+
+export enum AIProvider {
+  Gemini = 'Gemini',
+  DeepSeek = 'DeepSeek',
+  Qwen = 'Qwen'
+}
+
+export interface AppSettings {
+  provider: AIProvider;
+  keys: {
+    [AIProvider.DeepSeek]?: string;
+    [AIProvider.Qwen]?: string;
+  };
+}

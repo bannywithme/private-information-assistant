@@ -1,32 +1,39 @@
 import React, { useState, useEffect } from 'react';
-import { Source, FeedItem, Sentiment, Platform } from '../types';
-import { fetchAndAnalyzeFeed } from '../services/geminiService';
-import { RefreshCw, Filter, TrendingUp, AlertCircle, ExternalLink } from 'lucide-react';
+import { Source, FeedItem, Sentiment, Platform, AppSettings, AIProvider } from '../types';
+import { fetchAndAnalyzeFeed } from '../services/aiService';
+import { RefreshCw, Filter, TrendingUp, AlertCircle, ExternalLink, Cpu, ChevronDown } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip } from 'recharts';
 
 interface DashboardProps {
   sources: Source[];
+  settings: AppSettings;
+  setSettings: (settings: AppSettings) => void;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ sources }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ sources, settings, setSettings }) => {
   const [items, setItems] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [filterTopic, setFilterTopic] = useState<string>('All');
+  const [error, setError] = useState<string | null>(null);
 
   const generateBriefing = async () => {
     setLoading(true);
-    const results = await fetchAndAnalyzeFeed(sources);
-    setItems(results);
-    setLoading(false);
+    setError(null);
+    try {
+      const results = await fetchAndAnalyzeFeed(sources, settings);
+      setItems(results);
+    } catch (err: any) {
+      setError(err.message || "Failed to generate briefing. Check your API settings.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Initial load if items are empty and sources exist
   useEffect(() => {
     if (sources.length > 0 && items.length === 0) {
-      // Don't auto-fetch to save API calls, let user decide
-      // generateBriefing(); 
+      // Don't auto-fetch to save API calls
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sources]);
 
   // Analytics Data Preparation
@@ -43,9 +50,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ sources }) => {
   }, {} as Record<string, number>);
 
   const sentimentData = [
-    { name: 'Positive', value: sentimentCounts[Sentiment.Positive] || 0, color: '#10b981' }, // green-500
-    { name: 'Neutral', value: sentimentCounts[Sentiment.Neutral] || 0, color: '#64748b' }, // slate-500
-    { name: 'Negative', value: sentimentCounts[Sentiment.Negative] || 0, color: '#ef4444' }, // red-500
+    { name: 'Positive', value: sentimentCounts[Sentiment.Positive] || 0, color: '#10b981' }, 
+    { name: 'Neutral', value: sentimentCounts[Sentiment.Neutral] || 0, color: '#64748b' }, 
+    { name: 'Negative', value: sentimentCounts[Sentiment.Negative] || 0, color: '#ef4444' }, 
   ].filter(d => d.value > 0);
 
   const filteredItems = filterTopic === 'All' 
@@ -77,20 +84,54 @@ export const Dashboard: React.FC<DashboardProps> = ({ sources }) => {
       {/* Header Actions */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-white">Daily Intelligence Brief</h1>
-          <p className="text-slate-400 text-sm mt-1">
+          <div className="flex items-center gap-2 mb-1">
+             <h1 className="text-3xl font-bold text-white">Daily Intelligence Brief</h1>
+          </div>
+          <p className="text-slate-400 text-sm">
              AI-Synthesized feed from {sources.filter(s => s.active).length} active sources
           </p>
         </div>
-        <button
-          onClick={generateBriefing}
-          disabled={loading}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 text-white px-6 py-3 rounded-xl font-medium transition-all shadow-lg shadow-blue-900/20"
-        >
-          <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
-          {loading ? 'Analyzing Streams...' : 'Generate New Briefing'}
-        </button>
+        
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
+          {/* Model Selector */}
+          <div className="relative group min-w-[160px]">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Cpu className="h-4 w-4 text-slate-400 group-hover:text-blue-400 transition-colors" />
+            </div>
+            <select
+              value={settings.provider}
+              onChange={(e) => setSettings({ ...settings, provider: e.target.value as AIProvider })}
+              disabled={loading}
+              className="appearance-none pl-10 pr-10 py-3 bg-slate-800 border border-slate-700 hover:border-slate-600 text-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all cursor-pointer w-full font-medium"
+            >
+              {Object.values(AIProvider).map((p) => (
+                <option key={p} value={p}>
+                  {p}
+                </option>
+              ))}
+            </select>
+            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+              <ChevronDown className="h-4 w-4 text-slate-500" />
+            </div>
+          </div>
+
+          <button
+            onClick={generateBriefing}
+            disabled={loading}
+            className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 text-white px-6 py-3 rounded-xl font-medium transition-all shadow-lg shadow-blue-900/20 whitespace-nowrap"
+          >
+            <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+            {loading ? 'Analyzing...' : 'Generate New Briefing'}
+          </button>
+        </div>
       </div>
+      
+      {error && (
+        <div className="bg-red-900/20 border border-red-500/50 text-red-200 p-4 rounded-xl flex items-center gap-3">
+          <AlertCircle className="w-5 h-5 text-red-400" />
+          {error}
+        </div>
+      )}
 
       {items.length > 0 && (
         <>
@@ -135,7 +176,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ sources }) => {
                         <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
                       ))}
                     </Pie>
-                    <Tooltip contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', borderRadius: '8px' }} />
+                    <Tooltip 
+                      contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', borderRadius: '8px', color: '#f1f5f9' }}
+                      itemStyle={{ color: '#f1f5f9' }}
+                    />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
@@ -175,7 +219,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ sources }) => {
                     <span className="text-slate-500 text-sm">{item.timestamp}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                     {/* Relevance Score Badge */}
                      <div className="flex items-center gap-1 px-2 py-0.5 bg-slate-800 rounded text-xs text-slate-400 border border-slate-700">
                         <span>Relevance</span>
                         <span className={item.relevanceScore > 80 ? 'text-green-400' : 'text-yellow-400'}>
@@ -185,13 +228,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ sources }) => {
                   </div>
                 </div>
 
-                <p className="text-slate-300 leading-relaxed mb-4">
+                <p className="text-slate-300 leading-relaxed mb-4 whitespace-pre-wrap">
                   {item.summary}
                 </p>
 
                 <div className="bg-slate-950/50 p-3 rounded-lg border border-slate-800/50 mb-4">
                    <p className="text-xs text-slate-500 font-mono mb-1 uppercase">Simulated Raw Content</p>
-                   <p className="text-sm text-slate-400 italic">"{item.content}"</p>
+                   <p className="text-sm text-slate-400 italic whitespace-pre-wrap">"{item.content}"</p>
                 </div>
 
                 <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-800/50">

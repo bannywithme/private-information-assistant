@@ -3,8 +3,8 @@ import { Activity, Layers, Settings, Radio } from 'lucide-react';
 
 interface LayoutProps {
   children: React.ReactNode;
-  activeTab: 'dashboard' | 'sources';
-  onTabChange: (tab: 'dashboard' | 'sources') => void;
+  activeTab: 'dashboard' | 'sources' | 'settings';
+  onTabChange: (tab: 'dashboard' | 'sources' | 'settings') => void;
 }
 
 export const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange }) => {
@@ -46,7 +46,14 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange
         </nav>
 
         <div className="p-4 border-t border-slate-800">
-          <button className="w-full flex items-center gap-3 px-4 py-3 text-slate-500 hover:text-slate-300 transition-colors">
+          <button 
+            onClick={() => onTabChange('settings')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+              activeTab === 'settings'
+                ? 'bg-blue-600/10 text-blue-400 border border-blue-600/20'
+                : 'text-slate-500 hover:text-slate-300 hover:bg-slate-900'
+            }`}
+          >
             <Settings className="w-5 h-5" />
             <span className="hidden md:block">Settings</span>
           </button>
