@@ -21,8 +21,9 @@ const getSystemPrompt = () => `
   1. Analyze the provided list of tracked sources.
   2. Generate 5 to 8 hypothetical, high-quality feed items that these sources might have posted recently.
   3. Analyze each item to assign a sentiment and a relevance score (0-100).
-  4. If the generated content is not in Chinese, you MUST append the Chinese translation to the 'content' field (e.g., "Original Text... \n\n[Translation]: ...").
-  5. Return the data strictly as a JSON array.
+  4. The 'summary' field MUST be in Chinese (summarize the content in Chinese).
+  5. If the generated 'content' is not in Chinese, you MUST append the Chinese translation to the 'content' field (e.g., "Original Text... \n\n[Translation]: ...").
+  6. Return the data strictly as a JSON array.
 `;
 
 const getUserPrompt = (sources: Source[]) => {
@@ -41,7 +42,7 @@ const getUserPrompt = (sources: Source[]) => {
         "sourceName": "string",
         "platform": "string (X, Zhihu, XiaoHongShu, News, Blog)",
         "content": "string (full post text)",
-        "summary": "string (1 sentence summary)",
+        "summary": "string (1 sentence summary in Chinese)",
         "topic": "string (e.g. AI, Finance, Politics)",
         "sentiment": "string (Positive, Neutral, Negative)",
         "relevanceScore": number (0-100),
@@ -177,7 +178,7 @@ export const fetchAndAnalyzeFeed = async (sources: Source[], settings: AppSettin
         sources, 
         settings.keys[AIProvider.DeepSeek] || '', 
         'https://api.deepseek.com/chat/completions',
-        'DeepSeek-R1-0528',
+        'deepseek-reasoner',
         'deepseek'
       );
     case AIProvider.Qwen:
